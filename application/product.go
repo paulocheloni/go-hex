@@ -16,7 +16,7 @@ type ProductInterface interface {
 	Enable() error
 	Disable() error
 	GetId() string
-	GEtName() string
+	GetName() string
 	GetStatus() string
 	GetPrice() float64
 }
@@ -35,7 +35,7 @@ type Product struct {
 
 type ProductServiceInterface interface {
 	Get(id string) (ProductInterface, error)
-	Save(product *Product) (ProductInterface, error)
+	Save(name string, price float64) (ProductInterface, error)
 	Enable(id string) (ProductInterface, error)
 	Disable(id string) (ProductInterface, error)
 }
@@ -45,7 +45,7 @@ type ProductReader interface {
 }
 
 type ProductWriter interface {
-	Save(product *Product) (ProductInterface, error)
+	Save(product ProductInterface) (ProductInterface, error)
 }
 
 type ProductPersistenceInterface interface {
@@ -53,11 +53,10 @@ type ProductPersistenceInterface interface {
 	ProductWriter
 }
 
-func NewProduct(id, name string, price float64) *Product {
+func NewProduct() *Product {
 	product := Product{
-		ID:     uuid.New().String(),
-		Name:   name,
-		Price:  price,
+		ID: uuid.New().String(),
+
 		Status: DISABLED,
 	}
 	return &product
