@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/paulocheloni/gohex/adapters/db"
+	"github.com/paulocheloni/gohex/application"
 	"github.com/stretchr/testify/require"
 )
 
@@ -52,4 +53,29 @@ func TestProductDb_Get(t *testing.T) {
 	require.Equal(t, "abc", product.GetName)
 	require.Equal(t, 0.0, product.GetPrice)
 	require.Equal(t, "Disabled", product.GetStatus)
+}
+
+func TestProductDb_Save(t *testing.T) {
+	testing.Init()
+	defer Db.Close()
+	productDb := db.NewProductDb(Db)
+
+	product := application.NewProduct()
+	product.Name = "name"
+	product.Price = 2
+
+	productResult, err := productDb.Save(product)
+	require.Nil(t, err)
+	require.Equal(t, product.Name, productResult.GetName())
+	require.Equal(t, product.Price, productResult.GetPrice())
+	require.Equal(t, product.Status, productResult.GetStatus())
+
+	product.Status = "Enabled"
+
+	productResult, err = productDb.Save(product)
+	require.Nil(t, err)
+	require.Equal(t, product.Name, productResult.GetName())
+	require.Equal(t, product.Price, productResult.GetPrice())
+	require.Equal(t, product.Status, productResult.GetStatus())
+
 }
