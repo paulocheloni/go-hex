@@ -64,7 +64,7 @@ func (p *ProductDb) update(product application.ProductInterface) (application.Pr
 
 func (p *ProductDb) Save(product application.ProductInterface) (application.ProductInterface, error) {
 	var rows int
-	p.db.QueryRow("SELECT COUNT(*) FROM products WHERE id = ?", product.GetId()).Scan(&rows)
+	p.db.QueryRow("SELECT id  FROM products WHERE id = ?", product.GetId()).Scan(&rows)
 
 	if rows == 0 {
 		_, err := p.save(product)
