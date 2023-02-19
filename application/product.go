@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/asaskevich/govalidator"
+	"github.com/google/uuid"
 )
 
 func init() {
@@ -30,6 +31,36 @@ type Product struct {
 	Name   string  `valid:"required"`
 	Price  float64 `valid:"float,optional"`
 	Status string  `valid:"optional"`
+}
+
+type ProductServiceInterface interface {
+	Get(id string) (ProductInterface, error)
+	Save(product *Product) (ProductInterface, error)
+	Enable(id string) (ProductInterface, error)
+	Disable(id string) (ProductInterface, error)
+}
+
+type ProductReader interface {
+	Get(id string) (ProductInterface, error)
+}
+
+type ProductWriter interface {
+	Save(product *Product) (ProductInterface, error)
+}
+
+type ProductPersistenceInterface interface {
+	ProductReader
+	ProductWriter
+}
+
+func NewProduct(id, name string, price float64) *Product {
+	product := Product{
+		ID:     uuid.New().String(),
+		Name:   name,
+		Price:  price,
+		Status: DISABLED,
+	}
+	return &product
 }
 
 func (p *Product) IsValid() (bool, error) {
