@@ -31,3 +31,52 @@ func (p *ProductDb) Get(id string) (application.ProductInterface, error) {
 func NewProductDb(db *sql.DB) *ProductDb {
 	return &ProductDb{db: db}
 }
+
+func (p *ProductDb) save(product application.ProductInterface) (application.ProductInterface, error) {
+	stnt, err := p.db.Prepare("INSERT INTO products (id, name, price, status) VALUES (?, ?, ?, ?)")
+
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = stnt.Exec(product.GetId(), product.GetName(), product.GetPrice(), product.GetStatus())
+
+	if err != nil {
+		return nil, err
+	}
+	err = stnt.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	return product, nil
+}
+
+func (p *ProductDb) update(product application.ProductInterface) (application.ProductInterface, error) {
+	_, err := p.db.Exec("UPDATE products SET name = ?, price = ?, status = ? WHERE id = ?")
+
+	if err != nil {
+		return nil, err
+	}
+
+	return product, nil
+}
+
+func (p *ProductDb) Save(product application.ProductInterface) (application.ProductInterface, error) {
+	var rows int
+	p.db.QueryRow("SELECT COUNT(*) FROM products WHERE id = ?", product.GetId()).Scan(&rows)
+
+	if rows == 0 {
+		_, err := p.save(product)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		_, err := p.update(product)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return product, nil
+
+}
