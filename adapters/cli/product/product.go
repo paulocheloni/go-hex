@@ -22,14 +22,14 @@ func Run(service application.ProductServiceInterface, action string, productId s
 		if err != nil {
 			return result, err
 		}
-		res, err := service.Enable(product.GetId())
+		res, err := service.Enable(product)
 		if err != nil {
 			return result, err
 		}
 		result = fmt.Sprintf("Product with name %s has been created with the price %f and status of %s", res.GetName(), res.GetPrice(), res.GetStatus())
 	case "disable":
 		product, _ := service.Get(productId)
-		product, _ = service.Disable(product.GetId())
+		product, _ = service.Disable(product)
 		result = fmt.Sprintf("Product %s enabled with name %f has been created with the price  and status of %s", product.GetName(), product.GetPrice(), product.GetStatus())
 	case "get":
 		product, _ := service.Get(productId)

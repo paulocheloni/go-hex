@@ -15,6 +15,4 @@ RUN chown -R www-data:www-data /go
 RUN chown -R www-data:www-data /var/www/.cache
 USER www-data
 
-RUN apt-get update && apt-get install sqlite3 -y
-
 CMD ["tail", "-f", "/dev/null"]

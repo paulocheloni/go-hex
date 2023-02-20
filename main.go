@@ -1,18 +1,10 @@
+/*
+Copyright © 2023 NAME HERE <EMAIL ADDRESS>
+*/
 package main
 
-import (
-	"database/sql"
-
-	db2 "github.com/paulocheloni/gohex/adapters/db"
-	"github.com/paulocheloni/gohex/application"
-)
+import "github.com/paulocheloni/gohex/cmd"
 
 func main() {
-	db, _ := sql.Open("sqlite3", "db.sqlite")
-	productAdapater := db2.NewProductDb(db)
-	productService := application.NewProductService(productAdapater)
-	product, _ := productService.Save("abcd", 3.0)
-
-	productService.Enable(product)
-
+	cmd.Execute()
 }
