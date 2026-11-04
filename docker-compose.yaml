@@ -1,5 +1,7 @@
 version: "3"
 
+# The image working directory is /go/src. This bind mount is that directory,
+# so the db.sqlite file created on the first app start is written here.
 services:
   app:
     build: .

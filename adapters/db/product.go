@@ -32,6 +32,18 @@ func NewProductDb(db *sql.DB) *ProductDb {
 	return &ProductDb{db: db}
 }
 
+// EnsureProductsTable creates the products table when this database does not
+// have one. An existing table, including its rows, is left in place.
+func EnsureProductsTable(db *sql.DB) error {
+	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS products (
+		id string,
+		name string,
+		price float,
+		status string
+	)`)
+	return err
+}
+
 func (p *ProductDb) save(product application.ProductInterface) (application.ProductInterface, error) {
 	stnt, err := p.db.Prepare("INSERT INTO products (id, name, price, status) VALUES (?, ?, ?, ?)")
 
