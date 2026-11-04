@@ -10,12 +10,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var Db *sql.DB
-
-func init() {
-	Db, _ = sql.Open("sqlite3", ":memory:")
-	createTable(Db)
-	insertProduct(Db)
+func openDb() *sql.DB {
+	conn, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	// One connection keeps the in-memory database stable for the whole test.
+	conn.SetMaxOpenConns(1)
+	createTable(conn)
+	insertProduct(conn)
+	return conn
 }
 
 func createTable(db *sql.DB) {
@@ -29,36 +33,43 @@ func createTable(db *sql.DB) {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	stnt.Exec()
-
+	_, err = stnt.Exec()
+	if err != nil {
+		log.Fatal(err.Error())
+	}
 }
 
 func insertProduct(db *sql.DB) {
-	insert := `INSERT INTO products ("abc", "name", 0, "Disabled") VALUES (?, ?, ?, ?)`
+	insert := `INSERT INTO products (id, name, price, status) VALUES (?, ?, ?, ?)`
 	stnt, err := db.Prepare(insert)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	stnt.Exec()
-
+	_, err = stnt.Exec("abc", "name", 0, "Disabled")
+	if err != nil {
+		log.Fatal(err.Error())
+	}
 }
 
 func TestProductDb_Get(t *testing.T) {
 	testing.Init()
-	defer Db.Close()
-	productDb := db.NewProductDb(Db)
+	conn := openDb()
+	defer conn.Close()
+	productDb := db.NewProductDb(conn)
 	product, err := productDb.Get("abc")
 
 	require.Nil(t, err)
-	require.Equal(t, "abc", product.GetName)
-	require.Equal(t, 0.0, product.GetPrice)
-	require.Equal(t, "Disabled", product.GetStatus)
+	require.Equal(t, "abc", product.GetId())
+	require.Equal(t, "name", product.GetName())
+	require.Equal(t, 0.0, product.GetPrice())
+	require.Equal(t, "Disabled", product.GetStatus())
 }
 
 func TestProductDb_Save(t *testing.T) {
 	testing.Init()
-	defer Db.Close()
-	productDb := db.NewProductDb(Db)
+	conn := openDb()
+	defer conn.Close()
+	productDb := db.NewProductDb(conn)
 
 	product := application.NewProduct()
 	product.Name = "name"

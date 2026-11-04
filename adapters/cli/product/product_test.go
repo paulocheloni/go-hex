@@ -37,9 +37,9 @@ func TestRun(t *testing.T) {
 	require.Nil(t, err)
 	require.Equal(t, resultExpected, result)
 
-	resultExpected = fmt.Sprintf("Product with name %s has been created with the price %f and status of %s", productName, productPrice, productStatus)
+	resultExpected = fmt.Sprintf("Product %s enabled with name %f has been created with the price  and status of %s", productName, productPrice, productStatus)
 
-	result, err = cli.Run(service, "disable", "", productName, productPrice)
+	result, err = cli.Run(service, "disable", productId, "", 0)
 	require.Nil(t, err)
 	require.Equal(t, resultExpected, result)
 
