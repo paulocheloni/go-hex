@@ -4,12 +4,13 @@ gohex is a command-line product catalog built to show hexagonal architecture in 
 
 ## Tech stack
 
-- **Go 1.16** (`go.mod`). Persistence uses [`github.com/mattn/go-sqlite3`](https://github.com/mattn/go-sqlite3), a cgo driver, so a C compiler is required and `CGO_ENABLED` must stay on.
+- **Go 1.27** (`go 1.27.0` and `toolchain go1.27.3` in `go.mod`). Persistence uses [`github.com/mattn/go-sqlite3`](https://github.com/mattn/go-sqlite3), a cgo driver, so a C compiler is required and `CGO_ENABLED` must stay on.
 - **[Cobra](https://github.com/spf13/cobra)** for the `gohex` command.
 - **SQLite**, via `database/sql`. The process opens `db.sqlite` in the working directory.
 - **[google/uuid](https://github.com/google/uuid)** for product ids and **[govalidator](https://github.com/asaskevich/govalidator)** for struct checks inside `Product.IsValid`.
 - **[testify](https://github.com/stretchr/testify)** and **[golang/mock](https://github.com/golang/mock)** in the tests. Generated mocks are committed at `application/mocks/application.go`.
-- A **Docker** dev image (`golang:1.16`) in `Dockerfile` and `docker-compose.yaml`.
+- A **Docker** dev image (`golang:1.27.3`) in `Dockerfile` and `docker-compose.yaml`.
+- **GitHub Actions** (`.github/workflows/ci.yml`) runs `gofmt`, `go vet`, and `go test ./...` on pull requests and on pushes to `main`.
 
 ## Architecture
 
@@ -38,7 +39,7 @@ flowchart LR
   sqlite --> file
 ```
 
-`config.InjectService` is the composition root. It opens `db.sqlite`, wraps the connection in `ProductDb`, stores that value on `ProductService.Persistence`, and returns the service as a `ProductServiceInterface`. `cmd/root.go` calls it from a package-level variable, so the database opens when that package is initialized. The `cli` command passes the service into `adapters/cli/product.Run`.
+`config.InjectService` is the composition root. It opens `db.sqlite`, creates the `products` table when that table is missing, wraps the connection in `ProductDb`, stores that value on `ProductService.Persistence`, and returns the service as a `ProductServiceInterface`. `cmd/root.go` calls it from a package-level variable, so the database opens when that package is initialized. The `cli` command passes the service into `adapters/cli/product.Run`.
 
 ### Ports
 
@@ -76,6 +77,8 @@ A product has an id, a name, a price, and a status of `enabled` or `disabled`.
 
 ```
 .
+├── .github/workflows/ci.yml     # gofmt, go vet, and go test
+├── .gitignore                   # ignores db.sqlite
 ├── main.go                      # calls cmd.Execute
 ├── cmd/
 │   ├── root.go                  # builds the service and the root command
@@ -91,16 +94,17 @@ A product has an id, a name, a price, and a status of `enabled` or `disabled`.
 ├── adapters/
 │   ├── cli/product/             # driving adapter and its test
 │   └── db/                      # SQLite adapter and its test
-├── db.sqlite                    # file opened at runtime
 ├── Dockerfile
 ├── docker-compose.yaml
 ├── go.mod
 └── go.sum
 ```
 
+`db.sqlite` appears in this directory the first time the program starts. It is listed in `.gitignore`.
+
 ## Run locally
 
-Use Go 1.16 or later and a C compiler such as gcc. From the repository root:
+Use Go 1.27 or newer and a C compiler such as gcc. From the repository root:
 
 ```bash
 go run . cli --help
@@ -113,24 +117,13 @@ go build -o gohex .
 ./gohex cli --help
 ```
 
-`go build` and `go run . cli --help` were run with Go 1.22.2 and gcc. The module's declared language version remains Go 1.16, which is also the version in the Docker image.
+`go build` and `go run . cli --help` were run with Go 1.27.3 and gcc. That is the `toolchain` in `go.mod`, and the version of the Docker image.
 
-The repository includes `db.sqlite` with the table the adapter expects and a handful of rows. The program leaves schema creation to that file. For a new database in the current directory:
-
-```bash
-sqlite3 db.sqlite "CREATE TABLE products (
-  id string,
-  name string,
-  price float,
-  status string
-);"
-```
-
-`create` and `enable` append rows to whichever `db.sqlite` is in the working directory, including the file tracked in this repository.
+The process opens `db.sqlite` in the working directory. On startup it creates that file and the `products` table (`id`, `name`, `price`, `status`) when they are missing. A later start leaves an existing table and its rows in place. `create` and `enable` append rows to that file.
 
 ### Docker
 
-The compose file builds a dev container named `appproduct`, publishes port `9000`, and bind-mounts the repository at `/go/src`. The image installs `sqlite3`, `mockgen` v1.5.0, and `cobra-cli`, then runs as `www-data`. Its command is `tail -f /dev/null`, so the container stays up for a shell. The Go program is started by hand:
+The compose file builds a dev container named `appproduct`, publishes port `9000`, and bind-mounts the repository at `/go/src`. The image is `golang:1.27.3`. It installs `sqlite3`, `mockgen` v1.6.0, and `cobra-cli` v1.3.0, then runs as `www-data`. Its command is `tail -f /dev/null`, so the container stays up for a shell. The Go program is started by hand. The first start creates `db.sqlite` on the bind mount, so the file shows up in the project directory on the host:
 
 ```bash
 docker compose up --build -d
@@ -161,14 +154,14 @@ Creating a product prints the new id. The line is the format string in the CLI a
 Product 1afed169-3962-48ad-819e-d2fc96568cbc enabled, name: Notebook, price: 19.900000, status: disabled
 ```
 
-This id is already in the committed database:
+Pass that id to `get`:
 
 ```bash
-go run . cli -a get -i d38114e8-fcfe-4ef6-b1ff-cc500d628b0d
+go run . cli -a get -i 1afed169-3962-48ad-819e-d2fc96568cbc
 ```
 
 ```text
-product with name Product has been created with the price 25.000000 and status of disabled
+product with name Notebook has been created with the price 19.900000 and status of disabled
 ```
 
 Rejected input prints the validation error on its own line:
@@ -199,16 +192,24 @@ name is required
 
 ## Tests
 
-The domain package mocks `ProductPersistenceInterface` with gomock and covers the entity rules plus `Get`, `Save`, `Enable`, and `Disable`:
+```bash
+go test ./...
+```
+
+The suite passes. `application` checks the entity rules and the service methods `Get`, `Save`, `Enable`, and `Disable`, with `ProductPersistenceInterface` mocked by gomock. `adapters/cli/product` checks the `create`, `disable`, and `get` actions. `adapters/db` checks `Get`, `Save`, and `EnsureProductsTable` against an in-memory SQLite database.
+
+The domain package on its own:
 
 ```bash
 go test ./application
 ```
 
-That package passes.
+## CI
 
-```bash
-go test ./...
-```
+`.github/workflows/ci.yml` runs on pull requests and on pushes to `main`. The job sets `CGO_ENABLED=1` and runs:
 
-The other two test packages fail as they are written today. `adapters/cli/product` calls `disable` with an empty id while the mock expects `"123"`. `adapters/db` prepares a seed `INSERT` that SQLite rejects (`near "0": syntax error`), and its `Get` assertions compare strings with the getter methods instead of calling them.
+- `gofmt -l` (the tree must already be formatted)
+- `go vet ./...`
+- `go test ./...`
+
+`actions/setup-go` reads `go.mod` and installs the `toolchain go1.27.3` line.
