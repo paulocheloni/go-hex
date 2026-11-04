@@ -199,16 +199,14 @@ name is required
 
 ## Tests
 
-The domain package mocks `ProductPersistenceInterface` with gomock and covers the entity rules plus `Get`, `Save`, `Enable`, and `Disable`:
-
-```bash
-go test ./application
-```
-
-That package passes.
-
 ```bash
 go test ./...
 ```
 
-The other two test packages fail as they are written today. `adapters/cli/product` calls `disable` with an empty id while the mock expects `"123"`. `adapters/db` prepares a seed `INSERT` that SQLite rejects (`near "0": syntax error`), and its `Get` assertions compare strings with the getter methods instead of calling them.
+The suite passes. `application` checks the entity rules and the service methods `Get`, `Save`, `Enable`, and `Disable`, with `ProductPersistenceInterface` mocked by gomock. `adapters/cli/product` checks the `create`, `disable`, and `get` actions. `adapters/db` checks `Get` and `Save` against an in-memory SQLite database.
+
+The domain package on its own:
+
+```bash
+go test ./application
+```
